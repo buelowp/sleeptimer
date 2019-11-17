@@ -20,7 +20,7 @@
 #define CST_OFFSET      	-6
 #define DST_OFFSET      	(CST_OFFSET + 1)
 #define TIME_BASE_YEAR      2019
-#define APP_ID              17
+#define APP_ID              18
 #define BRIGHTNESS          20
 
 void mqttCallback(char*, byte*, unsigned int);
@@ -258,7 +258,7 @@ void loop()
             drawCross();
             break;
         case 6:
-            if (Time.weekday() > 1 || Time.weekday() < 7)
+            if (Time.weekday() > 1 && Time.weekday() < 7)
                 drawRectangle();
             break;
         case 7:
