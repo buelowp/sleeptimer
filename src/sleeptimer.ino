@@ -20,8 +20,11 @@
 #define CST_OFFSET      	-6
 #define DST_OFFSET      	(CST_OFFSET + 1)
 #define TIME_BASE_YEAR      2019
-#define APP_ID              18
+#define APP_ID              22
 #define BRIGHTNESS          20
+
+#define ONE_MINUTE          (1000 * 60)
+#define ONE_HOUR            (ONE_MINUTE * 60)
 
 void mqttCallback(char*, byte*, unsigned int);
 
@@ -38,6 +41,7 @@ char g_hostname[] = "172.24.1.13";
 Adafruit_NeoPixel wing(NUM_LEDS, PIXEL_PIN, WS2812B);
 bool g_timeSyncDone;
 bool g_mqttConnected;
+bool g_override;
 int g_displayState;
 int g_bright;
 int g_offset;
@@ -45,6 +49,15 @@ int g_appId;
 int g_buttonCount;
 system_tick_t g_debounce;
 MQTT client(g_hostname, 1883, mqttCallback);
+void timerTimeout();
+
+Timer g_timer(ONE_MINUTE, timerTimeout);
+
+void timerTimeout()
+{
+    g_override = false;
+    g_timer.stop();
+}
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) 
 {
@@ -187,6 +200,19 @@ int setBrightness(String b)
     return g_bright;
 }
 
+int setDisplay(String timeout)
+{
+    int t = timeout.toInt();
+    unsigned int newTimeout = t * ONE_MINUTE;
+
+    drawCross();
+    g_override = true;
+    g_timer.changePeriod(newTimeout);
+    g_timer.start();
+
+    return newTimeout;
+}
+
 void setup()
 {
     g_appId = APP_ID;
@@ -200,6 +226,7 @@ void setup()
     g_bright = BRIGHTNESS;
     g_buttonCount = 0;
     g_debounce = 0;
+    g_override = false;
     Time.zone(CST_OFFSET);
     currentTimeZone();
 
@@ -211,6 +238,7 @@ void setup()
     Particle.variable("connected", g_mqttConnected);
     Particle.variable("button", g_buttonCount);
     Particle.function("setBright", setBrightness);
+    Particle.function("display", setDisplay);
     g_mqttConnected = client.isConnected();
 }
 
@@ -238,8 +266,12 @@ void loop()
             g_buttonCount++;
         }
     }
+    if (g_override)
+        return;
+
     switch (Time.hour()) {
         case 0:
+            g_override = false;
         case 1:
         case 2:
             drawBlank();
